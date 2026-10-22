@@ -61,18 +61,23 @@
       </button>
       
       <div class="bg-white rounded-lg shadow-md p-6 border border-gray-200">
-        <div class="flex justify-between items-center mb-4 border-b pb-3">
+        <div class="flex justify-between items-center mb-3 border-b pb-3">
           <h2 id="detail-kelas-title" class="text-2xl font-bold text-gray-700">Detail Kelas</h2>
           <div class="flex items-center gap-3">
             <span id="detail-total-siswa" class="text-sm text-gray-500 font-medium"></span>
             <!-- Tombol Geser khusus Laptop/Komputer (otomatis tersembunyi di HP) -->
             <div class="hidden sm:flex items-center gap-1.5 bg-gray-100 p-1 rounded-md">
-              <button onclick="scrollTable('left')" class="px-2.5 py-1 text-xs font-semibold bg-white hover:bg-gray-50 text-gray-700 rounded shadow-xs border border-gray-200 transition" title="Geser Kiri">&larr; Kiri</button>
-              <button onclick="scrollTable('right')" class="px-2.5 py-1 text-xs font-semibold bg-blue-600 hover:bg-blue-700 text-white rounded shadow-xs transition" title="Geser Kanan">Kanan &rarr;</button>
+              <button onclick="scrollTable('left')" class="px-2.5 py-1 text-xs font-semibold bg-white hover:bg-gray-50 text-gray-700 rounded shadow-xs border border-gray-200 transition active:scale-95" title="Geser Kiri">&larr; Kiri</button>
+              <button onclick="scrollTable('right')" class="px-2.5 py-1 text-xs font-semibold bg-blue-600 hover:bg-blue-700 text-white rounded shadow-xs transition active:scale-95" title="Geser Kanan">Kanan &rarr;</button>
             </div>
           </div>
         </div>
         
+        <!-- Petunjuk ramah khusus pengguna Handphone -->
+        <p class="text-xs text-blue-600 mb-3 sm:hidden flex items-center gap-1.5 font-medium bg-blue-50/80 px-2.5 py-1.5 rounded">
+          <span>👉</span> Usap / geser tabel ke samping untuk melihat mapel lainnya &rarr;
+        </p>
+
         <div id="table-container" class="overflow-x-auto">
           <table class="w-full text-left border-collapse min-w-max">
             <thead>
