@@ -90,8 +90,8 @@
     const supabaseUrl = 'https://skscvybgkgcxhclcqdbm.supabase.co';
     const supabaseKey = 'sb_publishable_dbKf528CB6lMPlprKoRcDw_hxxHAD83';
     
-    // Perbaikan BUG-01: Menggunakan window.supabase.createClient
-    const supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
+    // Inisialisasi Supabase Client (hindari bentrok nama dengan variabel global window.supabase dari CDN)
+    const sbClient = window.supabase.createClient(supabaseUrl, supabaseKey);
 
     // State Global
     let dataRekap = [];
@@ -116,7 +116,7 @@
       showLoading(true);
       hideError();
       try {
-        const { data, error } = await supabase.from('rekap_mapel').select('*');
+        const { data, error } = await sbClient.from('rekap_mapel').select('*');
         if (error) throw error;
         
         dataRekap = data || [];
@@ -223,7 +223,7 @@
       showLoading(true);
 
       try {
-        const { data, error } = await supabase
+        const { data, error } = await sbClient
           .from('siswa')
           .select('*')
           .eq('kelas', kelas)
