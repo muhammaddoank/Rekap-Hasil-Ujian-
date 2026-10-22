@@ -7,6 +7,27 @@
   <script src="https://cdn.tailwindcss.com"></script>
   <!-- Mengambil library resmi Supabase -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    /* Scrollbar jelas khusus untuk tampilan PC/Komputer (dalam box) */
+    @media (min-width: 768px) {
+      .pc-scrollbox::-webkit-scrollbar {
+        height: 12px; /* Scrollbar horizontal di bawah box */
+        width: 10px;  /* Scrollbar vertikal di kanan box */
+      }
+      .pc-scrollbox::-webkit-scrollbar-track {
+        background: #f1f5f9;
+        border-radius: 6px;
+      }
+      .pc-scrollbox::-webkit-scrollbar-thumb {
+        background: #94a3b8;
+        border-radius: 6px;
+        border: 2px solid #f1f5f9;
+      }
+      .pc-scrollbox::-webkit-scrollbar-thumb:hover {
+        background: #64748b;
+      }
+    }
+  </style>
 </head>
 <body class="bg-gray-100 min-h-screen text-gray-800 font-sans">
 
@@ -78,10 +99,11 @@
           <span>👉</span> Usap / geser tabel ke samping untuk melihat mapel lainnya &rarr;
         </p>
 
-        <div id="table-container" class="overflow-x-auto">
+        <!-- Wadah Tabel: Di PC berbentuk Box dengan Scrollbar di Kanan & Bawah, di HP tetap alami bebas hambatan -->
+        <div id="table-container" class="overflow-x-auto md:max-h-[65vh] md:overflow-y-auto pc-scrollbox md:border md:border-gray-300 md:rounded-lg md:shadow-inner">
           <table class="w-full text-left border-collapse min-w-max">
             <thead>
-              <tr id="detail-thead" class="bg-gray-100 text-gray-700 text-sm">
+              <tr id="detail-thead" class="bg-gray-100 text-gray-700 text-sm md:sticky md:top-0 md:z-20 shadow-xs">
                 <!-- Header tabel di-render oleh JS -->
               </tr>
             </thead>
@@ -273,13 +295,13 @@
       });
       const mapelArray = Array.from(semuaMapel).sort();
 
-      // Render Header Tabel dengan escaping
+      // Render Header Tabel (di PC sticky top saat scroll box ke bawah)
       let thHTML = `
-        <th class="p-3 border-b font-semibold text-gray-600">No</th>
-        <th class="p-3 border-b font-semibold text-gray-600">Nama Siswa</th>
+        <th class="p-3 border-b font-semibold text-gray-700 md:sticky md:top-0 bg-gray-100 md:z-20">No</th>
+        <th class="p-3 border-b font-semibold text-gray-700 md:sticky md:top-0 bg-gray-100 md:z-20">Nama Siswa</th>
       `;
       mapelArray.forEach(m => {
-        thHTML += `<th class="p-3 border-b font-semibold text-gray-600 text-center">${escapeHTML(m)}</th>`;
+        thHTML += `<th class="p-3 border-b font-semibold text-gray-700 text-center md:sticky md:top-0 bg-gray-100 md:z-20 whitespace-nowrap px-4">${escapeHTML(m)}</th>`;
       });
       thead.innerHTML = thHTML;
 
