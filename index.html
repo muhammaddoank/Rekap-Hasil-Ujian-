@@ -7,6 +7,30 @@
   <script src="https://cdn.tailwindcss.com"></script>
   <!-- Mengambil library resmi Supabase -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    /* Scrollbar horizontal jelas dan mudah digeser di komputer/desktop */
+    .custom-scrollbar::-webkit-scrollbar {
+      height: 12px;
+      width: 8px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-track {
+      background: #f1f5f9;
+      border-radius: 6px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-thumb {
+      background: #94a3b8;
+      border-radius: 6px;
+      border: 2px solid #f1f5f9;
+    }
+    .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+      background: #475569;
+    }
+    
+    /* Garis bayangan pembatas kolom beku (sticky) */
+    .sticky-separator {
+      box-shadow: 4px 0 6px -2px rgba(0, 0, 0, 0.12);
+    }
+  </style>
 </head>
 <body class="bg-gray-100 min-h-screen text-gray-800 font-sans">
 
@@ -61,15 +85,38 @@
       </button>
       
       <div class="bg-white rounded-lg shadow-md p-6 border border-gray-200">
-        <div class="flex justify-between items-end mb-4 border-b pb-3">
-          <h2 id="detail-kelas-title" class="text-2xl font-bold text-gray-700">Detail Kelas</h2>
-          <span id="detail-total-siswa" class="text-sm text-gray-500 font-medium"></span>
+        <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-4 border-b pb-3">
+          <div>
+            <h2 id="detail-kelas-title" class="text-2xl font-bold text-gray-800">Detail Kelas</h2>
+            <span id="detail-total-siswa" class="text-xs text-gray-500 font-medium"></span>
+          </div>
+
+          <!-- Tombol Navigasi Geser Mapel untuk Komputer / Desktop -->
+          <div class="flex items-center gap-2">
+            <span class="text-xs text-gray-500 hidden md:inline font-medium">Geser Mapel:</span>
+            <button onclick="scrollTable('left')" class="px-3 py-1.5 bg-gray-100 hover:bg-blue-50 text-gray-700 hover:text-blue-600 rounded-md border border-gray-300 text-xs font-bold flex items-center gap-1 transition shadow-sm active:scale-95" title="Geser ke Kiri">
+              &larr; Kiri
+            </button>
+            <button onclick="scrollTable('right')" class="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-md text-xs font-bold flex items-center gap-1 transition shadow-sm active:scale-95" title="Geser ke Kanan">
+              Kanan &rarr;
+            </button>
+          </div>
+        </div>
+
+        <!-- Banner Petunjuk Navigasi Komputer -->
+        <div class="mb-3 bg-blue-50 border border-blue-200 text-blue-700 text-xs px-3.5 py-2 rounded-lg flex items-center justify-between">
+          <div class="flex items-center gap-2">
+            <span class="text-base">💡</span>
+            <span>Gunakan tombol <b>Kiri / Kanan</b> di atas atau tahan <b>Shift + Scroll Roda Mouse</b> untuk melihat mapel lainnya.</span>
+          </div>
+          <span class="hidden sm:inline text-blue-600 font-semibold text-[11px] bg-blue-100/70 px-2 py-0.5 rounded">Nama siswa terkunci di kiri</span>
         </div>
         
-        <div class="overflow-x-auto">
+        <!-- Wadah Tabel dengan Scrollbar Jelas & Ketinggian Terkontrol -->
+        <div id="table-container" class="overflow-x-auto max-h-[68vh] overflow-y-auto custom-scrollbar border border-gray-200 rounded-lg">
           <table class="w-full text-left border-collapse min-w-max">
             <thead>
-              <tr id="detail-thead" class="bg-gray-100 text-gray-700 text-sm">
+              <tr id="detail-thead" class="text-gray-700 text-sm">
                 <!-- Header tabel di-render oleh JS -->
               </tr>
             </thead>
@@ -261,24 +308,25 @@
       });
       const mapelArray = Array.from(semuaMapel).sort();
 
-      // Render Header Tabel dengan escaping
+      // Render Header Tabel dengan Sticky Freeze pada Kolom No & Nama
       let thHTML = `
-        <th class="p-3 border-b font-semibold text-gray-600">No</th>
-        <th class="p-3 border-b font-semibold text-gray-600">Nama Siswa</th>
+        <th class="p-3 font-bold text-gray-700 sticky left-0 top-0 bg-gray-100 z-30 w-12 text-center border-b">No</th>
+        <th class="p-3 font-bold text-gray-700 sticky left-12 top-0 bg-gray-100 z-30 sticky-separator min-w-[200px] border-b">Nama Siswa</th>
       `;
       mapelArray.forEach(m => {
-        thHTML += `<th class="p-3 border-b font-semibold text-gray-600 text-center">${escapeHTML(m)}</th>`;
+        thHTML += `<th class="p-3 font-bold text-gray-700 text-center sticky top-0 bg-gray-100 z-20 whitespace-nowrap px-4 border-b">${escapeHTML(m)}</th>`;
       });
       thead.innerHTML = thHTML;
 
-      // Render Baris Siswa
-      siswaList.forEach(s => {
+      // Render Baris Siswa dengan Sticky Freeze pada Kolom No & Nama
+      siswaList.forEach((s, idx) => {
         const safeNama = escapeHTML(s.nama);
         const safeNo = escapeHTML(s.no_urut);
+        const rowBg = idx % 2 === 0 ? 'bg-white' : 'bg-slate-50';
 
         let trHTML = `
-          <td class="p-3 font-mono text-gray-500">${safeNo}</td>
-          <td class="p-3 font-medium text-gray-900">${safeNama}</td>
+          <td class="p-3 font-mono text-gray-500 sticky left-0 ${rowBg} z-10 w-12 text-center border-b">${safeNo}</td>
+          <td class="p-3 font-medium text-gray-900 sticky left-12 ${rowBg} z-10 sticky-separator min-w-[200px] whitespace-nowrap border-b">${safeNama}</td>
         `;
         
         mapelArray.forEach(m => {
@@ -286,18 +334,18 @@
           let badge = '';
           
           if (status === 'SUDAH') {
-            badge = `<span class="bg-green-100 text-green-700 px-2 py-0.5 rounded text-xs font-bold">SUDAH</span>`;
+            badge = `<span class="bg-green-100 text-green-700 px-2.5 py-1 rounded text-xs font-bold whitespace-nowrap shadow-xs">SUDAH</span>`;
           } else if (status === 'BELUM') {
-            badge = `<span class="bg-red-100 text-red-700 px-2 py-0.5 rounded text-xs font-bold">BELUM</span>`;
+            badge = `<span class="bg-red-100 text-red-700 px-2.5 py-1 rounded text-xs font-bold whitespace-nowrap shadow-xs">BELUM</span>`;
           } else {
             badge = `<span class="text-gray-400 font-semibold">-</span>`;
           }
           
-          trHTML += `<td class="p-3 text-center">${badge}</td>`;
+          trHTML += `<td class="p-3 text-center border-b px-4 whitespace-nowrap">${badge}</td>`;
         });
         
         const tr = document.createElement('tr');
-        tr.className = "hover:bg-blue-50/50 transition";
+        tr.className = `hover:bg-blue-50/70 transition ${rowBg}`;
         tr.innerHTML = trHTML;
         tbody.appendChild(tr);
       });
@@ -306,6 +354,14 @@
     function kembaliKeRekap() {
       document.getElementById('detail-view').classList.add('hidden');
       document.getElementById('rekap-view').classList.remove('hidden');
+    }
+
+    // Fungsi Geser Tabel Horizontal untuk Komputer
+    function scrollTable(direction) {
+      const container = document.getElementById('table-container');
+      if (!container) return;
+      const amount = direction === 'left' ? -350 : 350;
+      container.scrollBy({ left: amount, behavior: 'smooth' });
     }
 
     function showLoading(show) {
