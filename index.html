@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dasbor Pengumpulan Nilai</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Mengambil library Supabase -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body class="bg-gray-100 min-h-screen text-gray-800 font-sans">
+
+  <!-- Navbar -->
+  <nav class="bg-blue-600 text-white shadow-md py-4 px-6 flex justify-between items-center">
+    <h1 class="text-xl font-bold">Dasbor Nilai Akademik</h1>
+    <div id="loading" class="hidden text-sm animate-pulse bg-blue-700 px-3 py-1 rounded-full">Memuat data...</div>
+  </nav>
+
+  <div class="container mx-auto px-4 py-8 max-w-6xl">
+    
+    <!-- Area Dasbor Rekap -->
+    <div id="rekap-view">
+      <h2 class="text-2xl font-bold mb-6 text-gray-700">Ringkasan Kelas</h2>
+      
+      <!-- Navigasi Tingkat Kelas -->
+      <div class="flex space-x-2 mb-6 border-b border-gray-300 pb-2" id="tingkat-tabs">
+        <button onclick="filterTingkat('7')" class="tab-btn px-4 py-2 font-semibold text-blue-600 border-b-2 border-blue-600" data-tingkat="7">Kelas 7</button>
+        <button onclick="filterTingkat('8')" class="tab-btn px-4 py-2 font-semibold text-gray-500 hover:text-blue-500" data-tingkat="8">Kelas 8</button>
+        <button onclick="filterTingkat('9')" class="tab-btn px-4 py-2 font-semibold text-gray-500 hover:text-blue-500" data-tingkat="9">Kelas 9</button>
+      </div>
+
+      <!-- Grid Kartu Kelas -->
+      <div id="kelas-grid" class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4">
+        <!-- Kartu kelas akan di-render di sini oleh JS -->
+      </div>
+    </div>
+
+    <!-- Area Detail Siswa (Awalnya Disembunyikan) -->
+    <div id="detail-view" class="hidden">
+      <button onclick="kembaliKeRekap()" class="mb-4 text-blue-600 hover:underline flex items-center">
+        &larr; Kembali ke Ringkasan
+      </button>
+      
+      <div class="bg-white rounded-lg shadow-md p-6">
+        <div class="flex justify-between items-end mb-4">
+          <h2 id="detail-kelas-title" class="text-2xl font-bold text-gray-700">Detail Kelas</h2>
+        </div>
+        
+        <div class="overflow-x-auto">
+          <table class="w-full text-left border-collapse min-w-max">
+            <thead>
+              <tr id="detail-thead" class="bg-gray-200 text-gray-700 text-sm">
+                <!-- Header tabel di-render oleh JS -->
+              </tr>
+            </thead>
+            <tbody id="detail-tbody" class="text-sm">
+              <!-- Baris data siswa di-render oleh JS -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <script>
+    // ==========================================
+    // 1. KONFIGURASI SUPABASE (ISI BAGIAN INI)
+    // ==========================================
+    const supabaseUrl = 'SB_URL_ANDA';
+    const supabaseKey = 'SB_KEY_ANDA';
+    const supabase = supabaseCreateClient.createClient(supabaseUrl, supabaseKey);
+
+    // State Global
+    let dataRekap = [];
+    let kelasUnik = [];
+    let tingkatAktif = '7';
+
+    // ==========================================
+    // 2. FUNGSI MENGAMBIL VIEW REKAP (Paling Ringan)
+    // ==========================================
+    async function init() {
+      showLoading(true);
+      try {
+        // Hanya mengambil 370-an baris dari view rekap_mapel
+        const { data, error } = await supabase.from('rekap_mapel').select('*');
+        if (error) throw error;
+        
+        dataRekap = data;
+        // Kumpulkan nama-nama kelas yang ada (mis. 7.1, 7.2)
+        kelasUnik = [...new Set(dataRekap.map(d => d.kelas))].sort((a, b) => {
+          // Sorting agar 7.10 ada di bawah 7.9 (bukan di bawah 7.1)
+          const numA = parseFloat(a);
+          const numB = parseFloat(b);
+          return numA - numB;
+        });
+
+        filterTingkat('7'); // Tampilkan kelas 7 pertama kali
+      } catch (err) {
+        console.error("Gagal memuat rekap:", err);
+        alert("Gagal memuat data. Periksa console.");
+      } finally {
+        showLoading(false);
+      }
+    }
+
+    // ==========================================
+    // 3. LOGIKA TAMPILAN DASHBOARD
+    // ==========================================
+    function filterTingkat(tingkat) {
+      tingkatAktif = tingkat;
+      
+      // Ubah gaya tombol tab
+      document.querySelectorAll('.tab-btn').forEach(btn => {
+        if (btn.dataset.tingkat === tingkat) {
+          btn.className = "tab-btn px-4 py-2 font-semibold text-blue-600 border-b-2 border-blue-600";
+        } else {
+          btn.className = "tab-btn px-4 py-2 font-semibold text-gray-500 hover:text-blue-500 border-b-2 border-transparent";
+        }
+      });
+
+      // Filter kelas yang depannya sesuai tingkat (misal mulai dari "7.")
+      const kelasTampil = kelasUnik.filter(k => k.startsWith(tingkat + '.'));
+      renderGridKelas(kelasTampil);
+    }
+
+    function renderGridKelas(listKelas) {
+      const grid = document.getElementById('kelas-grid');
+      grid.innerHTML = '';
+
+      if(listKelas.length === 0) {
+        grid.innerHTML = '<p class="text-gray-500 col-span-full">Belum ada data untuk tingkat ini.</p>';
+        return;
+      }
+
+      listKelas.forEach(kelas => {
+        // Ambil rekap khusus kelas ini
+        const rekapKelas = dataRekap.filter(d => d.kelas === kelas);
+        
+        let totalSudah = 0;
+        let totalBelum = 0;
+        
+        rekapKelas.forEach(r => {
+          totalSudah += r.sudah;
+          totalBelum += r.belum;
+        });
+
+        const totalData = totalSudah + totalBelum;
+        const persen = totalData === 0 ? 0 : Math.round((totalSudah / totalData) * 100);
+        
+        // Warna progress bar
+        let colorClass = 'bg-red-500';
+        if (persen >= 100) colorClass = 'bg-green-500';
+        else if (persen >= 75) colorClass = 'bg-yellow-400';
+        else if (persen >= 40) colorClass = 'bg-orange-500';
+
+        const card = document.createElement('div');
+        card.className = "bg-white p-5 rounded-lg shadow cursor-pointer hover:shadow-md transition border-t-4 border-blue-500 flex flex-col justify-between";
+        card.onclick = () => bukaDetailKelas(kelas);
+        
+        card.innerHTML = `
+          <div>
+            <h3 class="text-xl font-bold text-gray-800 mb-2">Kelas ${kelas}</h3>
+            <p class="text-sm text-gray-600 mb-4">Total Entri: ${totalSudah} Sudah / ${totalBelum} Belum</p>
+            
+            <!-- Progress Bar -->
+            <div class="w-full bg-gray-200 rounded-full h-2.5 mb-2">
+              <div class="${colorClass} h-2.5 rounded-full" style="width: ${persen}%"></div>
+            </div>
+            <p class="text-xs text-right font-bold text-gray-500">${persen}% Lengkap</p>
+          </div>
+          <button class="mt-4 text-sm w-full bg-blue-50 text-blue-600 font-semibold py-2 rounded hover:bg-blue-100 transition">
+            Lihat Siswa
+          </button>
+        `;
+        grid.appendChild(card);
+      });
+    }
+
+    // ==========================================
+    // 4. MENGAMBIL & MENAMPILKAN DETAIL SISWA
+    // ==========================================
+    async function bukaDetailKelas(kelas) {
+      document.getElementById('rekap-view').classList.add('hidden');
+      document.getElementById('detail-view').classList.remove('hidden');
+      document.getElementById('detail-kelas-title').innerText = 'Data Siswa - Kelas ' + kelas;
+      
+      const thead = document.getElementById('detail-thead');
+      const tbody = document.getElementById('detail-tbody');
+      thead.innerHTML = '';
+      tbody.innerHTML = '<tr><td class="p-4 text-center text-gray-500">Memuat data siswa...</td></tr>';
+      
+      showLoading(true);
+
+      try {
+        // Ambil data dari tabel 'siswa', TAPI hanya untuk kelas yang diklik! (sekitar ~40 baris)
+        const { data, error } = await supabase
+          .from('siswa')
+          .select('*')
+          .eq('kelas', kelas)
+          .order('no_urut', { ascending: true });
+
+        if (error) throw error;
+        
+        renderTabelSiswa(data);
+      } catch (err) {
+        console.error("Gagal memuat siswa:", err);
+        tbody.innerHTML = `<tr><td class="p-4 text-center text-red-500">Gagal memuat data.</td></tr>`;
+      } finally {
+        showLoading(false);
+      }
+    }
+
+    function renderTabelSiswa(siswaList) {
+      const thead = document.getElementById('detail-thead');
+      const tbody = document.getElementById('detail-tbody');
+      tbody.innerHTML = '';
+
+      if (siswaList.length === 0) {
+         tbody.innerHTML = `<tr><td class="p-4 text-center text-gray-500">Tidak ada data.</td></tr>`;
+         return;
+      }
+
+      // Kumpulkan semua nama mapel unik dari kolom nilai JSONB
+      let semuaMapel = new Set();
+      siswaList.forEach(s => {
+        if (s.nilai) Object.keys(s.nilai).forEach(m => semuaMapel.add(m));
+      });
+      const mapelArray = Array.from(semuaMapel).sort();
+
+      // Render Header Tabel
+      let thHTML = `
+        <th class="p-3 border-b">No</th>
+        <th class="p-3 border-b">Nama Siswa</th>
+      `;
+      mapelArray.forEach(m => {
+        thHTML += `<th class="p-3 border-b text-center">${m}</th>`;
+      });
+      thead.innerHTML = thHTML;
+
+      // Render Baris Siswa
+      siswaList.forEach(s => {
+        let trHTML = `
+          <td class="p-3 border-b">${s.no_urut}</td>
+          <td class="p-3 border-b font-medium">${s.nama}</td>
+        `;
+        
+        mapelArray.forEach(m => {
+          const nilai = s.nilai ? s.nilai[m] : '';
+          let badge = '';
+          
+          if (nilai === 'SUDAH') {
+            badge = `<span class="bg-green-100 text-green-700 px-2 py-1 rounded text-xs font-bold">SUDAH</span>`;
+          } else if (nilai === 'BELUM') {
+            badge = `<span class="bg-red-100 text-red-700 px-2 py-1 rounded text-xs font-bold">BELUM</span>`;
+          } else {
+            badge = `<span class="text-gray-400">-</span>`;
+          }
+          
+          trHTML += `<td class="p-3 border-b text-center">${badge}</td>`;
+        });
+        
+        const tr = document.createElement('tr');
+        tr.className = "hover:bg-gray-50";
+        tr.innerHTML = trHTML;
+        tbody.appendChild(tr);
+      });
+    }
+
+    function kembaliKeRekap() {
+      document.getElementById('detail-view').classList.add('hidden');
+      document.getElementById('rekap-view').classList.remove('hidden');
+    }
+
+    function showLoading(show) {
+      const el = document.getElementById('loading');
+      if (show) el.classList.remove('hidden');
+      else el.classList.add('hidden');
+    }
+
+    // Jalankan saat web dibuka
+    window.onload = init;
+  </script>
+</body>
+</html>
