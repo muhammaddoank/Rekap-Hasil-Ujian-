@@ -551,24 +551,25 @@
       });
       const mapelArray = Array.from(semuaMapel).sort();
 
-      // Header Tabel
+      // Header Tabel: No freeze di HP & PC; Nama Siswa freeze khusus di PC
       let thHTML = `
-        <th class="p-3.5 pl-4 font-bold text-slate-700 w-12 text-center md:sticky md:top-0 bg-slate-50 md:z-20">No</th>
-        <th class="p-3.5 font-bold text-slate-700 md:sticky md:top-0 bg-slate-50 md:z-20 min-w-[200px]">Nama Siswa</th>
+        <th class="p-3.5 pl-4 font-bold text-slate-700 w-12 min-w-[48px] max-w-[48px] text-center sticky left-0 md:top-0 z-30 bg-slate-50 border-b border-slate-200/80 shadow-[2px_0_4px_-2px_rgba(0,0,0,0.06)] md:shadow-none">No</th>
+        <th class="p-3.5 font-bold text-slate-700 bg-slate-50 border-b border-slate-200/80 md:sticky md:left-12 md:top-0 md:z-30 min-w-[200px] whitespace-nowrap md:shadow-[4px_0_6px_-2px_rgba(0,0,0,0.06)]">Nama Siswa</th>
       `;
       mapelArray.forEach(m => {
-        thHTML += `<th class="p-3.5 font-bold text-slate-700 text-center md:sticky md:top-0 bg-slate-50 md:z-20 whitespace-nowrap px-4">${escapeHTML(m)}</th>`;
+        thHTML += `<th class="p-3.5 font-bold text-slate-700 text-center md:sticky md:top-0 bg-slate-50 md:z-20 whitespace-nowrap px-4 border-b border-slate-200/80">${escapeHTML(m)}</th>`;
       });
       thead.innerHTML = thHTML;
 
-      // Baris Siswa
-      siswaList.forEach(s => {
+      // Baris Siswa: No freeze di HP & PC; Nama Siswa freeze khusus di PC
+      siswaList.forEach((s, idx) => {
         const safeNama = escapeHTML(s.nama);
         const safeNo = escapeHTML(s.no_urut);
+        const rowBg = idx % 2 === 0 ? 'bg-white' : 'bg-slate-50/60';
 
         let trHTML = `
-          <td class="p-3.5 pl-4 font-mono text-slate-400 text-center w-12">${safeNo}</td>
-          <td class="p-3.5 font-semibold text-slate-800 whitespace-nowrap">${safeNama}</td>
+          <td class="p-3.5 pl-4 font-mono text-slate-400 text-center w-12 min-w-[48px] max-w-[48px] sticky left-0 z-10 ${rowBg} border-b border-slate-100 shadow-[2px_0_4px_-2px_rgba(0,0,0,0.06)] md:shadow-none">${safeNo}</td>
+          <td class="p-3.5 font-semibold text-slate-800 whitespace-nowrap border-b border-slate-100 ${rowBg} md:sticky md:left-12 md:z-10 min-w-[200px] md:shadow-[4px_0_6px_-2px_rgba(0,0,0,0.06)]">${safeNama}</td>
         `;
         
         mapelArray.forEach(m => {
@@ -583,11 +584,11 @@
             badge = `<span class="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium text-slate-400 bg-slate-100/70">-</span>`;
           }
           
-          trHTML += `<td class="p-3.5 text-center whitespace-nowrap px-4">${badge}</td>`;
+          trHTML += `<td class="p-3.5 text-center whitespace-nowrap px-4 border-b border-slate-100">${badge}</td>`;
         });
         
         const tr = document.createElement('tr');
-        tr.className = "hover:bg-brand-50/40 transition-colors duration-150";
+        tr.className = `hover:bg-brand-50/40 transition-colors duration-150 ${rowBg}`;
         tr.innerHTML = trHTML;
         tbody.appendChild(tr);
       });
