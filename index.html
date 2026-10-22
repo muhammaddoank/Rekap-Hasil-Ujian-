@@ -3,136 +3,326 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Dasbor Pengumpulan Nilai</title>
+  <title>Dasbor Rekap Nilai Akademik</title>
+  
+  <!-- Google Fonts: Plus Jakarta Sans -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  
+  <!-- Tailwind CSS -->
   <script src="https://cdn.tailwindcss.com"></script>
-  <!-- Mengambil library resmi Supabase -->
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['"Plus Jakarta Sans"', 'system-ui', 'sans-serif'],
+          },
+          colors: {
+            brand: {
+              50: '#eef2ff',
+              100: '#e0e7ff',
+              200: '#c7d2fe',
+              500: '#6366f1',
+              600: '#4f46e5',
+              700: '#4338ca',
+            }
+          }
+        }
+      }
+    }
+  </script>
+
+  <!-- Supabase JS Library -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  
   <style>
-    /* Scrollbar jelas khusus untuk tampilan PC/Komputer (dalam box) */
+    body {
+      font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* Custom Scrollbar elegan untuk box tampilan PC/Laptop */
     @media (min-width: 768px) {
       .pc-scrollbox::-webkit-scrollbar {
-        height: 12px; /* Scrollbar horizontal di bawah box */
-        width: 10px;  /* Scrollbar vertikal di kanan box */
+        height: 10px;
+        width: 8px;
       }
       .pc-scrollbox::-webkit-scrollbar-track {
-        background: #f1f5f9;
-        border-radius: 6px;
+        background: #f8fafc;
+        border-radius: 9999px;
       }
       .pc-scrollbox::-webkit-scrollbar-thumb {
-        background: #94a3b8;
-        border-radius: 6px;
-        border: 2px solid #f1f5f9;
+        background: #cbd5e1;
+        border-radius: 9999px;
+        border: 2px solid #f8fafc;
       }
       .pc-scrollbox::-webkit-scrollbar-thumb:hover {
-        background: #64748b;
+        background: #94a3b8;
       }
+    }
+
+    /* Efek Shimmer Skeleton */
+    @keyframes shimmer {
+      100% {
+        transform: translateX(100%);
+      }
+    }
+    .skeleton-box {
+      position: relative;
+      overflow: hidden;
+      background-color: #f1f5f9;
+    }
+    .skeleton-box::after {
+      position: absolute;
+      top: 0; right: 0; bottom: 0; left: 0;
+      transform: translateX(-100%);
+      background-image: linear-gradient(
+        90deg,
+        rgba(255, 255, 255, 0) 0,
+        rgba(255, 255, 255, 0.6) 20%,
+        rgba(255, 255, 255, 0.6) 60%,
+        rgba(255, 255, 255, 0)
+      );
+      animation: shimmer 1.5s infinite;
+      content: '';
     }
   </style>
 </head>
-<body class="bg-gray-100 min-h-screen text-gray-800 font-sans">
+<body class="bg-[#f8fafc] min-h-screen text-slate-800 antialiased selection:bg-brand-500 selection:text-white">
 
-  <!-- Navbar -->
-  <nav class="bg-blue-600 text-white shadow-md py-4 px-6 flex justify-between items-center">
-    <h1 class="text-xl font-bold tracking-wide">Dasbor Nilai Akademik</h1>
-    <div id="loading" class="hidden text-sm animate-pulse bg-blue-700 px-3 py-1 rounded-full flex items-center gap-2">
-      <span class="inline-block w-2 h-2 rounded-full bg-white animate-ping"></span>
-      Memuat data...
+  <!-- Modern Top Navigation Bar -->
+  <header class="sticky top-0 z-40 bg-white/80 backdrop-blur-md border-b border-slate-200/80 transition-all">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <div class="w-9 h-9 rounded-xl bg-gradient-to-tr from-brand-600 to-indigo-500 flex items-center justify-center text-white shadow-md shadow-brand-500/20 font-extrabold text-base">
+          R
+        </div>
+        <div>
+          <h1 class="text-base font-bold text-slate-900 tracking-tight leading-tight">Rekap Nilai Akademik</h1>
+          <p class="text-[11px] font-medium text-slate-500 hidden sm:block">Pemantauan Progres Pengumpulan Ujian</p>
+        </div>
+      </div>
+
+      <div class="flex items-center gap-3">
+        <!-- Live Status Pill -->
+        <div class="hidden sm:inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-50 text-emerald-700 text-xs font-semibold ring-1 ring-inset ring-emerald-600/20">
+          <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+          Database Terhubung
+        </div>
+
+        <!-- Tombol Segarkan Data -->
+        <button onclick="init()" id="btn-refresh" class="inline-flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-semibold text-slate-700 bg-white hover:bg-slate-50 active:bg-slate-100 rounded-xl border border-slate-200/90 shadow-2xs hover:border-slate-300 transition duration-150">
+          <svg id="refresh-icon" class="w-3.5 h-3.5 text-slate-500 transition-transform duration-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+          </svg>
+          Segarkan
+        </button>
+      </div>
     </div>
-  </nav>
+  </header>
 
-  <div class="container mx-auto px-4 py-8 max-w-6xl">
+  <!-- Main Content Container -->
+  <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
     
     <!-- State Error Banner -->
-    <div id="error-banner" class="hidden mb-6 bg-red-100 border-l-4 border-red-500 text-red-700 p-4 rounded shadow-sm flex justify-between items-center">
-      <div>
-        <p class="font-bold">Terjadi Kesalahan</p>
-        <p id="error-message" class="text-sm">Gagal terhubung ke database server.</p>
+    <div id="error-banner" class="hidden mb-6 bg-rose-50 border border-rose-200 text-rose-800 p-4 rounded-2xl shadow-xs flex justify-between items-center animate-fade-in">
+      <div class="flex items-center gap-3">
+        <div class="w-8 h-8 rounded-lg bg-rose-100 text-rose-600 flex items-center justify-center font-bold">!</div>
+        <div>
+          <p class="font-bold text-sm">Gagal Mengambil Data</p>
+          <p id="error-message" class="text-xs text-rose-600 mt-0.5">Pastikan koneksi internet stabil dan server database aktif.</p>
+        </div>
       </div>
-      <button onclick="init()" class="bg-red-600 hover:bg-red-700 text-white text-xs font-bold py-1.5 px-3 rounded transition">
+      <button onclick="init()" class="bg-rose-600 hover:bg-rose-700 text-white text-xs font-semibold py-2 px-3.5 rounded-xl transition shadow-xs">
         Coba Lagi
       </button>
     </div>
 
-    <!-- Area Dasbor Rekap -->
+    <!-- ======================================================== -->
+    <!-- VIEW 1: REKAPITULASI KELAS (Ringkasan)                    -->
+    <!-- ======================================================== -->
     <div id="rekap-view">
-      <div class="flex justify-between items-center mb-6">
-        <h2 class="text-2xl font-bold text-gray-700">Ringkasan Kelas</h2>
-        <button onclick="init()" class="text-sm text-blue-600 hover:text-blue-800 flex items-center gap-1 font-semibold">
-          &#x21bb; Segarkan Data
-        </button>
-      </div>
       
-      <!-- Navigasi Tingkat Kelas -->
-      <div class="flex space-x-2 mb-6 border-b border-gray-300 pb-2" id="tingkat-tabs">
-        <button onclick="filterTingkat('7')" class="tab-btn px-4 py-2 font-semibold text-blue-600 border-b-2 border-blue-600" data-tingkat="7">Kelas 7</button>
-        <button onclick="filterTingkat('8')" class="tab-btn px-4 py-2 font-semibold text-gray-500 hover:text-blue-500 border-b-2 border-transparent" data-tingkat="8">Kelas 8</button>
-        <button onclick="filterTingkat('9')" class="tab-btn px-4 py-2 font-semibold text-gray-500 hover:text-blue-500 border-b-2 border-transparent" data-tingkat="9">Kelas 9</button>
+      <!-- Top Overview Header & Segment Controller -->
+      <div class="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-6">
+        <div>
+          <h2 class="text-2xl font-extrabold text-slate-900 tracking-tight">Ringkasan Kelas</h2>
+          <p class="text-xs text-slate-500 mt-1">Pilih tingkat kelas untuk memantau kelengkapan nilai ujian secara terinci.</p>
+        </div>
+
+        <!-- Modern Segment Controller (Tab Pill) -->
+        <div class="inline-flex p-1 bg-slate-200/70 rounded-2xl border border-slate-200/80 shadow-2xs self-start md:self-auto" id="tingkat-tabs">
+          <button onclick="filterTingkat('7')" class="tab-btn px-5 py-2 text-xs font-bold rounded-xl transition duration-200 text-brand-600 bg-white shadow-xs" data-tingkat="7">
+            Kelas 7
+          </button>
+          <button onclick="filterTingkat('8')" class="tab-btn px-5 py-2 text-xs font-semibold rounded-xl transition duration-200 text-slate-600 hover:text-slate-900" data-tingkat="8">
+            Kelas 8
+          </button>
+          <button onclick="filterTingkat('9')" class="tab-btn px-5 py-2 text-xs font-semibold rounded-xl transition duration-200 text-slate-600 hover:text-slate-900" data-tingkat="9">
+            Kelas 9
+          </button>
+        </div>
       </div>
 
-      <!-- Grid Kartu Kelas -->
-      <div id="kelas-grid" class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4">
-        <!-- Kartu kelas di-render secara dinamis -->
+      <!-- Overview Stats Mini Banner -->
+      <div class="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-6" id="stats-banner">
+        <div class="bg-white rounded-2xl p-4 border border-slate-200/80 shadow-2xs">
+          <p class="text-[11px] font-semibold uppercase tracking-wider text-slate-400">Total Kelas Aktif</p>
+          <p id="stat-total-kelas" class="text-xl font-extrabold text-slate-900 mt-1">-</p>
+        </div>
+        <div class="bg-white rounded-2xl p-4 border border-slate-200/80 shadow-2xs">
+          <p class="text-[11px] font-semibold uppercase tracking-wider text-emerald-600">Total Nilai Masuk</p>
+          <p id="stat-total-sudah" class="text-xl font-extrabold text-emerald-600 mt-1">-</p>
+        </div>
+        <div class="bg-white rounded-2xl p-4 border border-slate-200/80 shadow-2xs col-span-2 sm:col-span-1">
+          <p class="text-[11px] font-semibold uppercase tracking-wider text-rose-500">Nilai Belum Masuk</p>
+          <p id="stat-total-belum" class="text-xl font-extrabold text-rose-500 mt-1">-</p>
+        </div>
+      </div>
+
+      <!-- Skeleton Loading State (Ditampilkan saat fetch awal) -->
+      <div id="kelas-grid-skeleton" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+        <!-- 8 Shimmering Skeleton Cards -->
+        <div class="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-2xs space-y-4">
+          <div class="flex justify-between items-center">
+            <div class="skeleton-box h-5 w-24 rounded-md"></div>
+            <div class="skeleton-box h-5 w-14 rounded-full"></div>
+          </div>
+          <div class="skeleton-box h-3 w-36 rounded-md"></div>
+          <div class="skeleton-box h-2.5 w-full rounded-full"></div>
+          <div class="skeleton-box h-9 w-full rounded-xl"></div>
+        </div>
+        <div class="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-2xs space-y-4">
+          <div class="flex justify-between items-center">
+            <div class="skeleton-box h-5 w-24 rounded-md"></div>
+            <div class="skeleton-box h-5 w-14 rounded-full"></div>
+          </div>
+          <div class="skeleton-box h-3 w-36 rounded-md"></div>
+          <div class="skeleton-box h-2.5 w-full rounded-full"></div>
+          <div class="skeleton-box h-9 w-full rounded-xl"></div>
+        </div>
+        <div class="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-2xs space-y-4">
+          <div class="flex justify-between items-center">
+            <div class="skeleton-box h-5 w-24 rounded-md"></div>
+            <div class="skeleton-box h-5 w-14 rounded-full"></div>
+          </div>
+          <div class="skeleton-box h-3 w-36 rounded-md"></div>
+          <div class="skeleton-box h-2.5 w-full rounded-full"></div>
+          <div class="skeleton-box h-9 w-full rounded-xl"></div>
+        </div>
+        <div class="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-2xs space-y-4">
+          <div class="flex justify-between items-center">
+            <div class="skeleton-box h-5 w-24 rounded-md"></div>
+            <div class="skeleton-box h-5 w-14 rounded-full"></div>
+          </div>
+          <div class="skeleton-box h-3 w-36 rounded-md"></div>
+          <div class="skeleton-box h-2.5 w-full rounded-full"></div>
+          <div class="skeleton-box h-9 w-full rounded-xl"></div>
+        </div>
+      </div>
+
+      <!-- Real Cards Grid -->
+      <div id="kelas-grid" class="hidden grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+        <!-- Kartu kelas di-render secara dinamis oleh JavaScript -->
       </div>
     </div>
 
-    <!-- Area Detail Siswa (Awalnya Disembunyikan) -->
+    <!-- ======================================================== -->
+    <!-- VIEW 2: DETAIL SISWA PER KELAS                            -->
+    <!-- ======================================================== -->
     <div id="detail-view" class="hidden">
-      <button onclick="kembaliKeRekap()" class="mb-4 text-blue-600 hover:text-blue-800 flex items-center gap-1 font-semibold transition">
-        &larr; Kembali ke Ringkasan
-      </button>
       
-      <div class="bg-white rounded-lg shadow-md p-6 border border-gray-200">
-        <div class="flex justify-between items-center mb-3 border-b pb-3">
-          <h2 id="detail-kelas-title" class="text-2xl font-bold text-gray-700">Detail Kelas</h2>
-          <div class="flex items-center gap-3">
-            <span id="detail-total-siswa" class="text-sm text-gray-500 font-medium"></span>
-            <!-- Tombol Geser khusus Laptop/Komputer (otomatis tersembunyi di HP) -->
-            <div class="hidden sm:flex items-center gap-1.5 bg-gray-100 p-1 rounded-md">
-              <button onclick="scrollTable('left')" class="px-2.5 py-1 text-xs font-semibold bg-white hover:bg-gray-50 text-gray-700 rounded shadow-xs border border-gray-200 transition active:scale-95" title="Geser Kiri">&larr; Kiri</button>
-              <button onclick="scrollTable('right')" class="px-2.5 py-1 text-xs font-semibold bg-blue-600 hover:bg-blue-700 text-white rounded shadow-xs transition active:scale-95" title="Geser Kanan">Kanan &rarr;</button>
+      <!-- Tombol Kembali -->
+      <button onclick="kembaliKeRekap()" class="inline-flex items-center gap-2 text-xs font-bold text-slate-700 hover:text-brand-600 bg-white border border-slate-200/90 px-4 py-2 rounded-xl shadow-2xs hover:border-slate-300 transition mb-5 active:scale-95">
+        <svg class="w-3.5 h-3.5 text-slate-400 group-hover:text-brand-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M15 19l-7-7 7-7" />
+        </svg>
+        Kembali ke Ringkasan
+      </button>
+
+      <div class="bg-white rounded-3xl shadow-sm border border-slate-200/80 p-5 sm:p-7">
+        
+        <!-- Header Kartu Detail & Navigasi -->
+        <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4 pb-5 border-b border-slate-100">
+          <div>
+            <div class="flex items-center gap-2.5">
+              <span class="w-2.5 h-2.5 rounded-full bg-brand-600"></span>
+              <h2 id="detail-kelas-title" class="text-xl sm:text-2xl font-extrabold text-slate-900 tracking-tight">Detail Kelas</h2>
+            </div>
+            <p id="detail-total-siswa" class="text-xs text-slate-500 font-medium mt-1">Memuat daftar siswa...</p>
+          </div>
+
+          <!-- Tools: Pencarian Nama Siswa & Tombol Scroll Desktop -->
+          <div class="flex flex-wrap items-center gap-2.5">
+            <!-- Live Search Siswa -->
+            <div class="relative flex-1 sm:w-60">
+              <input 
+                id="search-siswa" 
+                type="text" 
+                oninput="cariSiswa(this.value)" 
+                placeholder="Cari nama siswa..." 
+                class="w-full text-xs pl-8 pr-3 py-2 bg-slate-50 border border-slate-200/90 rounded-xl text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition"
+              >
+              <svg class="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+              </svg>
+            </div>
+
+            <!-- Tombol Geser Tabel Khusus Komputer (Hidden di Layar Kecil) -->
+            <div class="hidden sm:inline-flex items-center gap-1 bg-slate-100/80 p-1 rounded-xl border border-slate-200/70">
+              <button onclick="scrollTable('left')" class="px-2.5 py-1 text-xs font-bold text-slate-700 bg-white hover:bg-slate-50 rounded-lg shadow-2xs border border-slate-200/80 transition active:scale-95" title="Geser ke Kiri">
+                &larr; Kiri
+              </button>
+              <button onclick="scrollTable('right')" class="px-2.5 py-1 text-xs font-bold text-white bg-brand-600 hover:bg-brand-700 rounded-lg shadow-2xs transition active:scale-95" title="Geser ke Kanan">
+                Kanan &rarr;
+              </button>
             </div>
           </div>
         </div>
-        
-        <!-- Petunjuk ramah khusus pengguna Handphone -->
-        <p class="text-xs text-blue-600 mb-3 sm:hidden flex items-center gap-1.5 font-medium bg-blue-50/80 px-2.5 py-1.5 rounded">
-          <span>👉</span> Usap / geser tabel ke samping untuk melihat mapel lainnya &rarr;
-        </p>
 
-        <!-- Wadah Tabel: Di PC berbentuk Box dengan Scrollbar di Kanan & Bawah, di HP tetap alami bebas hambatan -->
-        <div id="table-container" class="overflow-x-auto md:max-h-[65vh] md:overflow-y-auto pc-scrollbox md:border md:border-gray-300 md:rounded-lg md:shadow-inner">
+        <!-- Petunjuk Sentuh Lembut Khusus Handphone -->
+        <div class="sm:hidden mt-3 mb-1 px-3 py-2 rounded-xl bg-brand-50/70 border border-brand-100 text-[11px] font-semibold text-brand-700 flex items-center gap-2">
+          <span>👉</span> Usap / geser tabel ke samping untuk melihat nilai mapel
+        </div>
+
+        <!-- Wadah Tabel: Box di PC (Scrollbar Kanan & Bawah), Alami & Bebas di HP -->
+        <div id="table-container" class="mt-4 overflow-x-auto md:max-h-[64vh] md:overflow-y-auto pc-scrollbox md:border md:border-slate-200/90 md:rounded-2xl">
           <table class="w-full text-left border-collapse min-w-max">
             <thead>
-              <tr id="detail-thead" class="bg-gray-100 text-gray-700 text-sm md:sticky md:top-0 md:z-20 shadow-xs">
-                <!-- Header tabel di-render oleh JS -->
+              <tr id="detail-thead" class="bg-slate-50 text-slate-700 text-xs uppercase tracking-wider md:sticky md:top-0 md:z-20 border-b border-slate-200/80">
+                <!-- Header tabel di-render dinamis -->
               </tr>
             </thead>
-            <tbody id="detail-tbody" class="text-sm divide-y divide-gray-200">
-              <!-- Baris data siswa di-render oleh JS -->
+            <tbody id="detail-tbody" class="text-xs divide-y divide-slate-100 font-medium">
+              <!-- Baris siswa di-render dinamis -->
             </tbody>
           </table>
         </div>
+
       </div>
     </div>
 
-  </div>
+  </main>
 
   <script>
     // ==========================================
-    // 1. INISIALISASI SUPABASE CLIENT
+    // 1. KONFIGURASI SUPABASE CLIENT
     // ==========================================
     const supabaseUrl = 'https://skscvybgkgcxhclcqdbm.supabase.co';
     const supabaseKey = 'sb_publishable_dbKf528CB6lMPlprKoRcDw_hxxHAD83';
     
-    // Inisialisasi Supabase Client (hindari bentrok nama dengan variabel global window.supabase dari CDN)
+    // Inisialisasi client dengan nama variabel sbClient (anti bentrok dengan CDN)
     const sbClient = window.supabase.createClient(supabaseUrl, supabaseKey);
 
     // State Global
     let dataRekap = [];
     let kelasUnik = [];
     let tingkatAktif = '7';
+    let siswaKelasSaatIni = []; // Menyimpan salinan siswa kelas aktif untuk live search
 
-    // Utilitas Pencegahan XSS (BUG-05)
+    // Utilitas Pencegahan XSS
     function escapeHTML(str) {
       if (str === null || str === undefined) return '';
       return String(str)
@@ -144,42 +334,63 @@
     }
 
     // ==========================================
-    // 2. LOAD DATA AWAL REKAPITULASI
+    // 2. INTI LOAD DATA AWAL
     // ==========================================
     async function init() {
-      showLoading(true);
+      tampilkanSkeleton(true);
       hideError();
+      putarIconRefresh(true);
+
       try {
         const { data, error } = await sbClient.from('rekap_mapel').select('*');
         if (error) throw error;
         
         dataRekap = data || [];
         
-        // Perbaikan BUG-02: Natural sort agar 7.10 urut setelah 7.9
+        // Natural Sort agar 7.10 ada setelah 7.9
         kelasUnik = [...new Set(dataRekap.map(d => d.kelas))].sort((a, b) => {
           return a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' });
         });
 
+        // Hitung Statistik Ringkasan Atas
+        hitungStatistikGlobal();
+
+        // Render Tingkat Aktif
         filterTingkat(tingkatAktif);
       } catch (err) {
         console.error("Gagal memuat rekap:", err);
-        showError("Gagal mengambil data dari server Supabase. Pastikan koneksi internet stabil.");
+        showError("Gagal mengambil data dari server Supabase. Pastikan koneksi stabil.");
       } finally {
-        showLoading(false);
+        tampilkanSkeleton(false);
+        putarIconRefresh(false);
       }
     }
 
+    function hitungStatistikGlobal() {
+      let totalSudah = 0;
+      let totalBelum = 0;
+      dataRekap.forEach(r => {
+        totalSudah += (r.sudah || 0);
+        totalBelum += (r.belum || 0);
+      });
+
+      document.getElementById('stat-total-kelas').innerText = `${kelasUnik.length} Kelas`;
+      document.getElementById('stat-total-sudah').innerText = totalSudah.toLocaleString('id-ID');
+      document.getElementById('stat-total-belum').innerText = totalBelum.toLocaleString('id-ID');
+    }
+
     // ==========================================
-    // 3. LOGIKA TAMPILAN DASHBOARD
+    // 3. LOGIKA FILTER TINGKAT & RENDER KARTU
     // ==========================================
     function filterTingkat(tingkat) {
       tingkatAktif = tingkat;
       
+      // Update Gaya Segment Controller
       document.querySelectorAll('.tab-btn').forEach(btn => {
         if (btn.dataset.tingkat === tingkat) {
-          btn.className = "tab-btn px-4 py-2 font-semibold text-blue-600 border-b-2 border-blue-600";
+          btn.className = "tab-btn px-5 py-2 text-xs font-bold rounded-xl transition duration-200 text-brand-600 bg-white shadow-xs";
         } else {
-          btn.className = "tab-btn px-4 py-2 font-semibold text-gray-500 hover:text-blue-500 border-b-2 border-transparent";
+          btn.className = "tab-btn px-5 py-2 text-xs font-semibold rounded-xl transition duration-200 text-slate-600 hover:text-slate-900";
         }
       });
 
@@ -192,7 +403,13 @@
       grid.innerHTML = '';
 
       if (listKelas.length === 0) {
-        grid.innerHTML = '<p class="text-gray-500 col-span-full text-center py-8">Belum ada data nilai untuk tingkat ini.</p>';
+        grid.innerHTML = `
+          <div class="col-span-full py-12 text-center bg-white rounded-3xl border border-slate-200/80 p-8 shadow-2xs">
+            <div class="w-12 h-12 rounded-2xl bg-slate-100 text-slate-400 mx-auto flex items-center justify-center font-bold text-lg mb-3">∅</div>
+            <p class="font-bold text-slate-800 text-sm">Belum ada data nilai</p>
+            <p class="text-xs text-slate-400 mt-1">Belum ada entri nilai yang tercatat untuk Kelas ${tingkatAktif}.</p>
+          </div>
+        `;
         return;
       }
 
@@ -208,32 +425,62 @@
         });
 
         const totalWajib = totalSudah + totalBelum;
-        // Pencegahan division by zero
         const persen = totalWajib === 0 ? 0 : Math.round((totalSudah / totalWajib) * 100);
         
-        let colorClass = 'bg-red-500';
-        if (persen >= 100) colorClass = 'bg-green-500';
-        else if (persen >= 75) colorClass = 'bg-yellow-400';
-        else if (persen >= 40) colorClass = 'bg-orange-500';
+        // Warna Pill & Progress Bar Berdasarkan Persentase
+        let progressGradient = 'from-rose-500 to-pink-500';
+        let badgeStyle = 'bg-rose-50 text-rose-700 ring-rose-600/20';
+
+        if (persen >= 100) {
+          progressGradient = 'from-emerald-500 to-teal-400';
+          badgeStyle = 'bg-emerald-50 text-emerald-700 ring-emerald-600/20';
+        } else if (persen >= 75) {
+          progressGradient = 'from-brand-600 to-indigo-500';
+          badgeStyle = 'bg-indigo-50 text-brand-700 ring-brand-600/20';
+        } else if (persen >= 40) {
+          progressGradient = 'from-amber-400 to-orange-400';
+          badgeStyle = 'bg-amber-50 text-amber-700 ring-amber-600/20';
+        }
 
         const safeKelas = escapeHTML(kelas);
 
         const card = document.createElement('div');
-        card.className = "bg-white p-5 rounded-lg shadow-sm hover:shadow-md transition border-t-4 border-blue-500 flex flex-col justify-between";
+        card.className = "bg-white p-5 rounded-3xl border border-slate-200/80 shadow-2xs hover:shadow-lg hover:border-slate-300 transition-all duration-300 hover:-translate-y-0.5 flex flex-col justify-between group";
         card.onclick = () => bukaDetailKelas(kelas);
         
         card.innerHTML = `
           <div>
-            <h3 class="text-xl font-bold text-gray-800 mb-1">Kelas ${safeKelas}</h3>
-            <p class="text-xs text-gray-500 mb-4 font-medium">Pengumpulan: <span class="text-green-600 font-bold">${totalSudah}</span> Sudah / <span class="text-red-600 font-bold">${totalBelum}</span> Belum</p>
-            
-            <div class="w-full bg-gray-200 rounded-full h-2.5 mb-2 overflow-hidden">
-              <div class="${colorClass} h-2.5 rounded-full transition-all duration-500" style="width: ${persen}%"></div>
+            <!-- Header Kartu: Nama Kelas & Persentase Pill -->
+            <div class="flex justify-between items-center mb-3">
+              <span class="text-base font-extrabold text-slate-900 tracking-tight group-hover:text-brand-600 transition">
+                Kelas ${safeKelas}
+              </span>
+              <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold ring-1 ring-inset ${badgeStyle}">
+                ${persen}%
+              </span>
             </div>
-            <p class="text-xs text-right font-bold text-gray-600">${persen}% Lengkap</p>
+
+            <!-- Total Nilai -->
+            <div class="flex items-center justify-between text-xs text-slate-500 mb-3 font-medium">
+              <span>Pengumpulan:</span>
+              <span>
+                <strong class="text-emerald-600 font-bold">${totalSudah.toLocaleString('id-ID')}</strong> Sudah / 
+                <strong class="text-rose-500 font-bold">${totalBelum.toLocaleString('id-ID')}</strong> Belum
+              </span>
+            </div>
+            
+            <!-- Progress Bar Halus -->
+            <div class="w-full bg-slate-100 rounded-full h-2 overflow-hidden p-0.5 border border-slate-200/60 mb-2">
+              <div class="h-full rounded-full bg-gradient-to-r ${progressGradient} transition-all duration-500" style="width: ${persen}%"></div>
+            </div>
           </div>
-          <button class="mt-4 text-sm w-full bg-blue-50 text-blue-600 font-semibold py-2 rounded hover:bg-blue-100 transition">
+
+          <!-- Tombol Aksi Bawah -->
+          <button class="mt-4 w-full py-2.5 px-3 rounded-2xl text-xs font-bold text-slate-700 bg-slate-50 group-hover:bg-brand-600 group-hover:text-white transition-all duration-200 flex items-center justify-center gap-1 border border-slate-200/70 group-hover:border-transparent group-hover:shadow-md group-hover:shadow-brand-500/25">
             Lihat Detail Siswa
+            <svg class="w-3.5 h-3.5 transition-transform group-hover:translate-x-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 5l7 7-7 7" />
+            </svg>
           </button>
         `;
         grid.appendChild(card);
@@ -241,20 +488,28 @@
     }
 
     // ==========================================
-    // 4. DETAIL SISWA (LAZY LOAD PER KELAS)
+    // 4. DETAIL SISWA & LIVE SEARCH
     // ==========================================
     async function bukaDetailKelas(kelas) {
       document.getElementById('rekap-view').classList.add('hidden');
       document.getElementById('detail-view').classList.remove('hidden');
-      document.getElementById('detail-kelas-title').innerText = 'Data Siswa - Kelas ' + kelas;
-      document.getElementById('detail-total-siswa').innerText = '';
+      document.getElementById('detail-kelas-title').innerText = 'Data Siswa — Kelas ' + kelas;
+      document.getElementById('detail-total-siswa').innerText = 'Memuat data siswa...';
+      document.getElementById('search-siswa').value = '';
       
       const thead = document.getElementById('detail-thead');
       const tbody = document.getElementById('detail-tbody');
       thead.innerHTML = '';
-      tbody.innerHTML = '<tr><td colspan="10" class="p-6 text-center text-gray-500 animate-pulse">Memuat data siswa kelas ' + escapeHTML(kelas) + '...</td></tr>';
       
-      showLoading(true);
+      // Tampilkan 4 Baris Skeleton Shimmer Tabel
+      tbody.innerHTML = `
+        <tr><td colspan="12" class="p-4"><div class="skeleton-box h-6 w-full rounded-md"></div></td></tr>
+        <tr><td colspan="12" class="p-4"><div class="skeleton-box h-6 w-full rounded-md"></div></td></tr>
+        <tr><td colspan="12" class="p-4"><div class="skeleton-box h-6 w-full rounded-md"></div></td></tr>
+        <tr><td colspan="12" class="p-4"><div class="skeleton-box h-6 w-full rounded-md"></div></td></tr>
+      `;
+      
+      putarIconRefresh(true);
 
       try {
         const { data, error } = await sbClient
@@ -265,12 +520,13 @@
 
         if (error) throw error;
         
-        renderTabelSiswa(data || []);
+        siswaKelasSaatIni = data || [];
+        renderTabelSiswa(siswaKelasSaatIni);
       } catch (err) {
         console.error("Gagal memuat siswa:", err);
-        tbody.innerHTML = `<tr><td colspan="10" class="p-6 text-center text-red-500 font-semibold">Gagal memuat data siswa kelas ini.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="12" class="p-8 text-center text-rose-500 font-bold">Gagal memuat data siswa kelas ini.</td></tr>`;
       } finally {
-        showLoading(false);
+        putarIconRefresh(false);
       }
     }
 
@@ -279,14 +535,14 @@
       const tbody = document.getElementById('detail-tbody');
       tbody.innerHTML = '';
 
-      document.getElementById('detail-total-siswa').innerText = `Total: ${siswaList.length} Siswa`;
+      document.getElementById('detail-total-siswa').innerText = `Menampilkan ${siswaList.length} Siswa`;
 
       if (siswaList.length === 0) {
-        tbody.innerHTML = `<tr><td class="p-6 text-center text-gray-500">Belum ada data siswa pada kelas ini.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="12" class="p-8 text-center text-slate-400 font-medium">Tidak ada siswa yang cocok dengan pencarian.</td></tr>`;
         return;
       }
 
-      // Kumpulkan mapel unik dan sort secara alfabetis
+      // Kumpulkan mapel unik dan sort
       let semuaMapel = new Set();
       siswaList.forEach(s => {
         if (s.nilai && typeof s.nilai === 'object') {
@@ -295,24 +551,24 @@
       });
       const mapelArray = Array.from(semuaMapel).sort();
 
-      // Render Header Tabel (di PC sticky top saat scroll box ke bawah)
+      // Header Tabel
       let thHTML = `
-        <th class="p-3 border-b font-semibold text-gray-700 md:sticky md:top-0 bg-gray-100 md:z-20">No</th>
-        <th class="p-3 border-b font-semibold text-gray-700 md:sticky md:top-0 bg-gray-100 md:z-20">Nama Siswa</th>
+        <th class="p-3.5 pl-4 font-bold text-slate-700 w-12 text-center md:sticky md:top-0 bg-slate-50 md:z-20">No</th>
+        <th class="p-3.5 font-bold text-slate-700 md:sticky md:top-0 bg-slate-50 md:z-20 min-w-[200px]">Nama Siswa</th>
       `;
       mapelArray.forEach(m => {
-        thHTML += `<th class="p-3 border-b font-semibold text-gray-700 text-center md:sticky md:top-0 bg-gray-100 md:z-20 whitespace-nowrap px-4">${escapeHTML(m)}</th>`;
+        thHTML += `<th class="p-3.5 font-bold text-slate-700 text-center md:sticky md:top-0 bg-slate-50 md:z-20 whitespace-nowrap px-4">${escapeHTML(m)}</th>`;
       });
       thead.innerHTML = thHTML;
 
-      // Render Baris Siswa
+      // Baris Siswa
       siswaList.forEach(s => {
         const safeNama = escapeHTML(s.nama);
         const safeNo = escapeHTML(s.no_urut);
 
         let trHTML = `
-          <td class="p-3 font-mono text-gray-500">${safeNo}</td>
-          <td class="p-3 font-medium text-gray-900">${safeNama}</td>
+          <td class="p-3.5 pl-4 font-mono text-slate-400 text-center w-12">${safeNo}</td>
+          <td class="p-3.5 font-semibold text-slate-800 whitespace-nowrap">${safeNama}</td>
         `;
         
         mapelArray.forEach(m => {
@@ -320,21 +576,35 @@
           let badge = '';
           
           if (status === 'SUDAH') {
-            badge = `<span class="bg-green-100 text-green-700 px-2 py-0.5 rounded text-xs font-bold">SUDAH</span>`;
+            badge = `<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-50 text-emerald-700 ring-1 ring-inset ring-emerald-600/20 whitespace-nowrap">SUDAH</span>`;
           } else if (status === 'BELUM') {
-            badge = `<span class="bg-red-100 text-red-700 px-2 py-0.5 rounded text-xs font-bold">BELUM</span>`;
+            badge = `<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-rose-50 text-rose-700 ring-1 ring-inset ring-rose-600/20 whitespace-nowrap">BELUM</span>`;
           } else {
-            badge = `<span class="text-gray-400 font-semibold">-</span>`;
+            badge = `<span class="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium text-slate-400 bg-slate-100/70">-</span>`;
           }
           
-          trHTML += `<td class="p-3 text-center">${badge}</td>`;
+          trHTML += `<td class="p-3.5 text-center whitespace-nowrap px-4">${badge}</td>`;
         });
         
         const tr = document.createElement('tr');
-        tr.className = "hover:bg-blue-50/50 transition";
+        tr.className = "hover:bg-brand-50/40 transition-colors duration-150";
         tr.innerHTML = trHTML;
         tbody.appendChild(tr);
       });
+    }
+
+    // Fitur Live Search Siswa
+    function cariSiswa(query) {
+      const q = query.trim().toLowerCase();
+      if (!q) {
+        renderTabelSiswa(siswaKelasSaatIni);
+        return;
+      }
+      const hasilFilter = siswaKelasSaatIni.filter(s => 
+        (s.nama && s.nama.toLowerCase().includes(q)) || 
+        String(s.no_urut).includes(q)
+      );
+      renderTabelSiswa(hasilFilter);
     }
 
     function kembaliKeRekap() {
@@ -342,7 +612,7 @@
       document.getElementById('rekap-view').classList.remove('hidden');
     }
 
-    // Fungsi Geser Khusus Desktop/Laptop
+    // Scroll Horizontal Khusus PC
     function scrollTable(direction) {
       const container = document.getElementById('table-container');
       if (container) {
@@ -351,10 +621,25 @@
       }
     }
 
-    function showLoading(show) {
-      const el = document.getElementById('loading');
-      if (show) el.classList.remove('hidden');
-      else el.classList.add('hidden');
+    function tampilkanSkeleton(show) {
+      const skeleton = document.getElementById('kelas-grid-skeleton');
+      const grid = document.getElementById('kelas-grid');
+      if (show) {
+        skeleton.classList.remove('hidden');
+        grid.classList.add('hidden');
+      } else {
+        skeleton.classList.add('hidden');
+        grid.classList.remove('hidden');
+      }
+    }
+
+    function putarIconRefresh(putar) {
+      const icon = document.getElementById('refresh-icon');
+      if (putar) {
+        icon.classList.add('animate-spin');
+      } else {
+        icon.classList.remove('animate-spin');
+      }
     }
 
     function showError(msg) {
